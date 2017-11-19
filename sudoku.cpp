@@ -10,7 +10,10 @@
 #include <assert.h>
 #include <omp.h>
 #include "mic.h"
-#include <math.h>
+<<<<<<< HEAD
+#include <math.h> 
+=======
+>>>>>>> 9f483451fef8d8912a3c9021b344444f5c1b45dd
 
 #define BUFSIZE 1024
 //number of bits (least significant) used to store the real value of the board cell
@@ -60,6 +63,12 @@ static void show_help(const char *program_path)
 
 int maxInt(int a, int b) { return (a > b)? a : b; }
 int minInt(int a, int b) { return (a < b)? a : b; }
+
+<<<<<<< HEAD
+// Needed bit-operations:
+
+=======
+>>>>>>> 9f483451fef8d8912a3c9021b344444f5c1b45dd
 void addToBoard(int num, int i, int *board, int boardSize) {
   /*temporary storage for the bitvector specifying what number choices still open for
     that spot on the board */
@@ -68,12 +77,20 @@ void addToBoard(int num, int i, int *board, int boardSize) {
     //num != 0
     //fixed number on sudoku board, so only 1 choice for the number
     choices = 1 << num;
+<<<<<<< HEAD
+=======
+
+>>>>>>> 9f483451fef8d8912a3c9021b344444f5c1b45dd
   } else {
     //num == 0
     //blank number on sudoku board, so can be any number
     choices = ((1 << boardSize) - 1) << 1;
   }
+<<<<<<< HEAD
   board[i] = (choices << VALUEBITS) + num; // oshafie: I think we set value only in elemenation, setting the value would require that you remove it as option from box,row and column
+=======
+  board[i] = (choices << VALUEBITS) + num;
+>>>>>>> 9f483451fef8d8912a3c9021b344444f5c1b45dd
 }
 
 void writeFile(FILE *output_file, int *board, int i) {
@@ -87,6 +104,7 @@ void ellimination(int *board, int boardSize, bool &cellChanged) {
 void loneRanger(int *board, int boardSize, bool &cellChanged) {
 
 }
+<<<<<<< HEAD
 /*
  * bitCount - returns count of number of 1's in word
  *   Examples: bitCount(5) = 2, bitCount(7) = 3
@@ -158,7 +176,7 @@ void twinsInRow(int *board, int boardSize, bool &choicesChanged){
                   }
                 }
               }
-              if (!found){
+              if !(found){
                 setOptions(board, A, options);
                 setOptions(board, B, options);
                 choicesChanged = true;
@@ -211,7 +229,7 @@ void twinsInBox(int *board, int boardSize, bool &choicesChanged){
                     }
                   }
                 }
-                if (!found){
+                if !(found){
                   setOptions(board, A, options);
                   setOptions(board, B, options);
                   choicesChanged = true;
@@ -261,7 +279,7 @@ void twinsInColumn(int *board, int boardSize, bool &choicesChanged){
                   }
                 }
               }
-              if (!found){
+              if !(found){
                 setOptions(board, A, options);
                 setOptions(board, B, options);
                 choicesChanged = true;
@@ -318,7 +336,7 @@ void tripletsInRow(int *board, int boardSize, bool &choicesChanged){
                       }
                     }
                   }
-                  if (!found){
+                  if !(found){
                     setOptions(board, A, options);
                     setOptions(board, B, options);
                     setOptions(board, C, options);
@@ -381,7 +399,7 @@ void tripletsInBox(int *board, int boardSize, bool &choicesChanged){
                         }
                       }
                     }
-                    if (!found){
+                    if !(found){
                       setOptions(board, A, options);
                       setOptions(board, B, options);
                       setOptions(board, C, options);
@@ -441,7 +459,7 @@ void tripletsInColumn(int *board, int boardSize, bool &choicesChanged){
                       }
                     }
                   }
-                  if (!found){
+                  if !(found){
                     setOptions(board, A, options);
                     setOptions(board, B, options);
                     setOptions(board, C, options);
