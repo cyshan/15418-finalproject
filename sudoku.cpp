@@ -156,9 +156,10 @@ void loneRanger(int *board, int boardSize, bool &cellChanged, int n) {
   for (int i = 0; i < boardSize * boardSize; i++) {
     int value = board[i];
     if (!(value % (1<<VALUEBITS))) {
+
       //cell is currently empty
-      int row = i / n;
-      int col = i % n;
+      int row = i / boardSize;
+      int col = i % boardSize;
 
       //create a mask to find which choices the other cells in col have
       int mask = 0;
@@ -171,6 +172,7 @@ void loneRanger(int *board, int boardSize, bool &cellChanged, int n) {
 
       //if value still has 1 choice
       if (value && !(value & (value - 1))) {
+        cellChanged = true;
         //write choice to cell and eliminate choices from relevant cells
         board[i] += log2(value) - VALUEBITS;
         eliminateChoices(board, boardSize, row, col, n);
@@ -178,7 +180,7 @@ void loneRanger(int *board, int boardSize, bool &cellChanged, int n) {
       }
 
       //do the same for rows and blocks
-
+      value = board[i];
       mask = 0;
       for (int colI = 0; colI < boardSize; colI++) {
         if (colI != col) {
@@ -189,6 +191,7 @@ void loneRanger(int *board, int boardSize, bool &cellChanged, int n) {
       value = value & (~mask);
 
       if (value && !(value & (value - 1))) {
+        cellChanged = true;
         board[i] += log2(value) - VALUEBITS;
         eliminateChoices(board, boardSize, row, col, n);
         continue;
@@ -199,6 +202,7 @@ void loneRanger(int *board, int boardSize, bool &cellChanged, int n) {
       int baseRow = row / n * n;
       int baseCol = col / n * n;
 
+      value = board[i];
       mask = 0;
       for (int squareI = 0; squareI < boardSize; squareI++){
         int squareRow = baseRow + squareI / n;
@@ -207,10 +211,11 @@ void loneRanger(int *board, int boardSize, bool &cellChanged, int n) {
           mask = mask | board[squareRow * boardSize + squareCol];
         }
       }
-
+      
       value = value & (~mask);
 
       if (value && !(value & (value - 1))) {
+        cellChanged = true;
         board[i] += log2(value) - VALUEBITS;
         eliminateChoices(board, boardSize, row, col, n);
       }
@@ -240,6 +245,7 @@ bool humanistic(int *board, int boardSize, int n) {
       if (!elimination(board, boardSize, cellChanged, n)) return false;
       if (cellChanged) continue;
       loneRanger(board, boardSize, cellChanged, n);
+      //printf("%d\n", cellChanged);
       if (cellChanged) continue;
     }
     if (choicesChanged) {
