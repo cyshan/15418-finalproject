@@ -87,8 +87,64 @@ void writeFile(FILE *output_file, int *board, int i) {
   fprintf(output_file, "%d ", board[i] % (1<<VALUEBITS));
 }
 
-void ellimination(int *board, int boardSize, bool &cellChanged) {
+void eliminateChoices(int *board, int boardSize, int row, int col, int n) {
+  //number to eliminate as option from relevant cells
+  int num = board[row * boardSize + col] % (1<<VALUEBITS);
+  //filter for removing options from cells
+  int filter = ~(1 << (VALUEBITS + num));
+  for (int rowI = 0; rowI < boardSize; rowI++) {
+    //eliminate choices for the column
+    if (rowI != row) {
+      int i = rowI * boardSize + col;
+      board[i] = board[i] & filter; 
+    }
+  }
 
+  for (int colI = 0; colI < boardSize; colI++) {
+    //eliminate choices for the row
+    if (colI != col) {
+      int i = row * boardSize + colI;
+      board[i] = board[i] & filter; 
+    }
+  }
+
+  /*base row and col for the square the cell is located in
+   (the index of upper-right corner of the square) */
+  int baseRow = row / n * n;
+  int baseCol = col / n * n;
+  for (int squareI = 0; squareI < boardSize; squareI++){
+    //eliminate choices for the square
+    int squareRow = baseRow + squareI / n;
+    int squareCol = baseCol + squareI % n;
+    if (squareCol != col || squareRow != row) {
+      int i = squareRow * boardSize + squareCol;
+      board[i] = board[i] & filter;
+    }
+  }
+}
+
+bool elimination(int *board, int boardSize, bool &cellChanged, int n) {
+  //return false iff the board given has no valid solution
+  for (int i = 0; i < boardSize * boardSize; i++) {
+    int value = board[i];
+    if (!(value % (1<<VALUEBITS))) {
+      //cell is currently empty
+      value = value >> VALUEBITS;
+      //all the choice bits are 0, so no solution to board
+      if (!value) return false;
+
+      if (!(value & (value - 1))) {
+        //value is a power of 2, aka there is only one value this cell can take
+        cellChanged = true;
+        //find position of the single choice
+        int pos = 0;
+        while (value >>= 1) ++pos;
+        board[i] += pos;
+        eliminateChoices(board, boardSize, i / boardSize, i % boardSize, n);
+      }
+    }
+  }
+  return true;
 }
 
 void loneRanger(int *board, int boardSize, bool &cellChanged) {
@@ -103,18 +159,18 @@ void triplets(int *board, int boardSize, bool &choicesChanged) {
 
 }
 
-bool humanistic(int *board, int boardSize) {
+bool humanistic(int *board, int boardSize, int n) {
   /* return false if board has no solution
      otherwise (i.e. if solution found or algorithm makes no more changes) return true */
 
   //in some step of algorithm, a cell was written to with its final value
   bool cellChanged = true;
-  //in some step of algorithm, choices were elliminated from some cell
+  //in some step of algorithm, choices were eliminated from some cell
   bool choicesChanged = true;
   while (cellChanged || choicesChanged) {
     if (cellChanged) {
       cellChanged = false;
-      ellimination(board, boardSize, cellChanged);
+      if (!elimination(board, boardSize, cellChanged, n)) return false;
       if (cellChanged) continue;
       loneRanger(board, boardSize, cellChanged);
       if (cellChanged) continue;
@@ -129,41 +185,7 @@ bool humanistic(int *board, int boardSize) {
   return true;
 }
 
-void elliminateChoices(int *board, int boardSize, int row, int col, int n) {
-  //number to elliminate as option from relevant cells
-  int num = board[row * boardSize + col] % (1<<VALUEBITS);
-  //filter for removing options from cells
-  int filter = ~(1 << (VALUEBITS + num));
-  for (int rowI = 0; rowI < boardSize; rowI++) {
-    //elliminate choices for the column
-    if (rowI != row) {
-      int i = rowI * boardSize + col;
-      board[i] = board[i] & filter; 
-    }
-  }
 
-  for (int colI = 0; colI < boardSize; colI++) {
-    //elliminate choices for the row
-    if (colI != col) {
-      int i = row * boardSize + colI;
-      board[i] = board[i] & filter; 
-    }
-  }
-
-  /*base row and col for the square the cell is located in
-   (the index of upper-right corner of the square) */
-  int baseRow = row / n * n;
-  int baseCol = col / n * n;
-  for (int squareI = 0; squareI < boardSize; squareI++){
-    //elliminate choices for the square
-    int squareRow = baseRow + squareI / n;
-    int squareCol = baseCol + squareI % n;
-    if (squareCol != col || squareRow != row) {
-      int i = squareRow * boardSize + squareCol;
-      board[i] = board[i] & filter;
-    }
-  }
-}
 
 void initialChoiceElm(int *board, int boardSize, int n) {
   //n is square root of board size
@@ -172,7 +194,7 @@ void initialChoiceElm(int *board, int boardSize, int n) {
       int i = row * boardSize + col;
       if (board[i] % (1<<VALUEBITS)) {
         //if the cell in the board has a value
-        elliminateChoices(board, boardSize, row, col, n);
+        eliminateChoices(board, boardSize, row, col, n);
       }
     }
   }
@@ -243,10 +265,10 @@ int main(int argc, const char *argv[])
   /* Initialize additional data structures needed in the algorithm 
    * here if you feel it's needed. */
 
-  //do initial choice ellimination based on given board
+  //do initial choice elimination based on given board
   initialChoiceElm(board, boardSize, n);
 
-  printBoard(board, boardSize);
+  //printBoard(board, boardSize);
 
 
   error = 0;
@@ -268,7 +290,7 @@ int main(int argc, const char *argv[])
   {
 
     //Humanistic algorithm
-    if (!humanistic(board, boardSize)){
+    if (!humanistic(board, boardSize, n)){
       //no solution exists
     }
 
