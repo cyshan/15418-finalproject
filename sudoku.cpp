@@ -11,6 +11,7 @@
 #include <omp.h>
 #include "mic.h"
 #include <math.h> 
+#include <string> 
 
 #define BUFSIZE 1024
 //number of bits (least significant) used to store the real value of the board cell
@@ -57,10 +58,136 @@ static void show_help(const char *program_path)
     printf("\t-n <num_of_threads> (required)\n");
 }
 
+std::string cellToString(int cell, int boardSize){
+  cell = cell >> VALUEBITS;
+  std::string s = "";
+  for (int i = 0; i<= boardSize; i++){
+    if (cell & 1){
+      s += std::to_string(i)+",";
+    }
+    cell = cell >>1;
+  }
+  return s;
+}
+void printBoard(int *board, int boardSize) {
+  printf("\n\n\n\n\n");
+  for (int r = 0; r < boardSize; r++) {
+    //for (int i = 0; i < boardSize; i++) printf("_____");
+    for (int c = 0; c < boardSize; c++)
+    {
+      std::string str = cellToString(board[r*boardSize + c],boardSize);
+      printf("%s | ", str.c_str());
+    }
+    printf("\n");
+  }
+}
+
 
 int maxInt(int a, int b) { return (a > b)? a : b; }
 int minInt(int a, int b) { return (a < b)? a : b; }
+bool isEmpty(int cell){
+  // returns true if value is not set yet, false otherwise
+  int allOnes = (1 << (VALUEBITS+1)) -1;
+  return !((cell & allOnes));
+}
 
+void checkRows(int *board, int boardSize, bool &correctness){
+
+  for (int r = 0; r < boardSize*boardSize; r += boardSize)
+  {
+    // Compare every 2 distenct cells
+    for (int i = 0; i < boardSize-1; i++)
+    {
+      int A = r+i;
+      int cellA = board[A];
+      if (!isEmpty(cellA)){
+        for (int j = i+1; j < boardSize; j++)
+        {
+          int B = r+j;
+          int cellB = board[B];
+          if (cellB == cellA){
+            correctness = false;
+          }
+        }
+      }
+      else
+      {
+        //printf("Cell %d is empty!\n", A);
+      }
+    }
+  }
+}
+void checkBoxes(int *board, int boardSize, bool &correctness){
+  int n = sqrt(boardSize);
+  for (int bx = 0; bx < n; bx++)
+  {
+    for (int by = 0; by < n; by++)
+    {
+      int box_index = bx*n*boardSize + by*n;
+      // Compare every 2 distenct cells
+      for (int i = 0; i < boardSize -1; i++)
+      {
+        int A = ((i/n))*boardSize + (i%n) + box_index;
+        int cellA = board[A];
+        if (!isEmpty(cellA)){
+          for (int j = i+1; j < boardSize; j++)
+          {
+            int B = ((j/n))*boardSize + (j%n) + box_index;
+            int cellB = board[B];
+            if (cellB == cellA){
+              correctness = false;
+            }
+          }
+        }
+        else
+        {
+            //printf("Cell %d is empty!\n", A);
+        }
+      }
+    }
+  }
+}
+
+void checkColumns(int *board, int boardSize, bool &correctness){
+  for (int c = 0; c < boardSize; c++)
+  {
+    // Compare every 2 distenct cells
+    for (int i = 0; i < boardSize-1; i++)
+    {
+      int A = i*boardSize + c;
+      int cellA = board[A];
+      if (!isEmpty(cellA)){
+        for (int j = i+1; j < boardSize; j++)
+        {
+          int B = j*boardSize + c;
+          int cellB = board[B];
+          if (cellB == cellA){
+            correctness = false;
+          }
+        }
+      }
+      else
+      {
+        //printf("Cell %d is empty!\n", A);
+      }
+    }
+  }
+}
+
+void correctnessChecker(int *board, int boardSize){
+  bool correctness = true;
+  checkRows(board, boardSize, correctness);
+  checkColumns(board, boardSize, correctness);
+  checkBoxes(board, boardSize, correctness);
+
+  if (correctness){
+    printf("\n\n!!!!!Correctness is passed!!!!!\n\n");
+  }
+  else
+  {
+    printf("\n\n!!!!!Correctness is failed!!!!!\n\n");
+  }
+}
 void addToBoard(int num, int i, int *board, int boardSize) {
   /*temporary storage for the bitvector specifying what number choices still open for
     that spot on the board */
@@ -69,25 +196,84 @@ void addToBoard(int num, int i, int *board, int boardSize) {
     //num != 0
     //fixed number on sudoku board, so only 1 choice for the number
     choices = 1 << num;
+
   } else {
     //num == 0
     //blank number on sudoku board, so can be any number
     choices = ((1 << boardSize) - 1) << 1;
   }
-  board[i] = (choices << VALUEBITS) + num; // oshafie: I think we set value only in ellimination, setting the value would require that you remove it as option from box,row and column
+  board[i] = (choices << VALUEBITS) + num;
 }
 
 void writeFile(FILE *output_file, int *board, int i) {
   fprintf(output_file, "%d ", board[i] % (1<<VALUEBITS));
 }
 
-void ellimination(int *board, int boardSize, bool &cellChanged) {
+void eliminateChoices(int *board, int boardSize, int row, int col, int n) {
+  //number to eliminate as option from relevant cells
+  int num = board[row * boardSize + col] % (1<<VALUEBITS);
+  //filter for removing options from cells
+  int filter = ~(1 << (VALUEBITS + num));
+  for (int rowI = 0; rowI < boardSize; rowI++) {
+    //eliminate choices for the column
+    if (rowI != row) {
+      int i = rowI * boardSize + col;
+      board[i] = board[i] & filter; 
+    }
+  }
 
+  for (int colI = 0; colI < boardSize; colI++) {
+    //eliminate choices for the row
+    if (colI != col) {
+      int i = row * boardSize + colI;
+      board[i] = board[i] & filter; 
+    }
+  }
+
+  /*base row and col for the square the cell is located in
+   (the index of upper-right corner of the square) */
+  int baseRow = row / n * n;
+  int baseCol = col / n * n;
+  for (int squareI = 0; squareI < boardSize; squareI++){
+    //eliminate choices for the square
+    int squareRow = baseRow + squareI / n;
+    int squareCol = baseCol + squareI % n;
+    if (squareCol != col || squareRow != row) {
+      int i = squareRow * boardSize + squareCol;
+      board[i] = board[i] & filter;
+    }
+  }
 }
 
-void loneRanger(int *board, int boardSize, bool &cellChanged) {
+bool elimination(int *board, int boardSize, bool &cellChanged, int n) {
+  //return false iff the board given has no valid solution
+  printf("On ellimination:\n");
+  for (int i = 0; i < boardSize * boardSize; i++) {
+    int value = board[i];
+    if (!(value % (1<<VALUEBITS))) {
+      //cell is currently empty
+      value = value >> VALUEBITS;
+      //all the choice bits are 0, so no solution to board
+      if (!value) return false;
 
+      if (!(value & (value - 1))) {
+        //value is a power of 2, aka there is only one value this cell can take
+        cellChanged = true;
+        //find position of the single choice
+        int pos = 0;
+        while (value >>= 1) ++pos;
+        board[i] += pos;
+        eliminateChoices(board, boardSize, i / boardSize, i % boardSize, n);
+      }
+    }
+  }
+  return true;
 }
+
+void loneRanger(int *board, int boardSize, bool &cellChanged, int n) {
+           
+}
+
 /*
  * bitCount - returns count of number of 1's in word
  *   Examples: bitCount(5) = 2, bitCount(7) = 3
@@ -109,11 +295,6 @@ int bitCount(int x) {
   return (x & every16) + ((x >> 16)& every16);//4
 }
 
-bool isEmpty(int cell){
-  // returns true if value is not set yet, false otherwise
-  int allOnes = (1 << (VALUEBITS+1)) -1;
-  return !((cell & allOnes));
-}
 int getCellOptions(int cellA){
   //returns the options part only 
   return cellA >> VALUEBITS;
@@ -138,31 +319,33 @@ void twinsInRow(int *board, int boardSize, bool &choicesChanged){
       A = r+i;
       cellA = board[A];
       if (isEmpty(cellA)){ //avoid already set cells
-        cellA = getCellOptions(cellA);
         for (int j = i+1; j < boardSize; j++)
         {
           B = r+j;
           cellB = board[B];
           if (isEmpty(cellB)){ //avoid already set cells
-            cellB = getCellOptions(cellB);
             // cellA and cellB are twins if cellA & cellB has exactly 2 options
             int options = cellA & cellB;
-            if (bitCount(options)== 2){
+            if (bitCount(options) >= 2){
               //Check that no other cell have the any of the 2 options available
-              bool found = false;
+              int optionsUnion = 0; // get all options for all left cells
               for (int t = 0; t < boardSize; t++)
               {
                 if (t != i && t != j){
-                  if (options & getCellOptions(board[r+t]) != 0){
-                    found = true;
-                    break;
-                  }
+                  int tempCell = board[r+t];
+                  optionsUnion = optionsUnion | tempCell;
                 }
               }
-              if !(found){
-                setOptions(board, A, options);
-                setOptions(board, B, options);
-                choicesChanged = true;
+              options = options & ~optionsUnion; // remove options that are in the union
+              if (bitCount(options) == 2){
+                if (options != cellA){
+                  setOptions(board, A, options);
+                  choicesChanged = true;
+                }
+                if (options != cellB){
+                  setOptions(board, B, options);
+                  choicesChanged = true;
+                }
               }
             }
           }
@@ -200,22 +383,26 @@ void twinsInBox(int *board, int boardSize, bool &choicesChanged){
               cellB = getCellOptions(cellB);
               // cellA and cellB are twins if cellA & cellB has exactly 2 options
               int options = cellA & cellB;
-              if (bitCount(options)== 2){
+              if (bitCount(options) >= 2){
                 //Check that no other cell have the any of the 2 options available
-                bool found = false;
+                int optionsUnion = 0; // get all options for all left cells
                 for (int t = 0; t < boardSize; t++)
                 {
                   if (t != i && t != j){
-                    if (options & getCellOptions(board[((t/n))*boardSize + (t%n) + box_index]) != 0){
-                      found = true;
-                      break;
-                    }
+                    int tempCell = board[((t/n))*boardSize + (t%n) + box_index];
+                    optionsUnion = optionsUnion | tempCell;
                   }
                 }
-                if !(found){
+                options = options & ~optionsUnion; // remove options that are in the union
+                if (bitCount(options) == 2){
+                  if (options != cellA){
                   setOptions(board, A, options);
-                  setOptions(board, B, options);
                   choicesChanged = true;
+                  }
+                  if (options != cellB){
+                    setOptions(board, B, options);
+                    choicesChanged = true;
+                  }
                 }
               }
             }
@@ -250,22 +437,26 @@ void twinsInColumn(int *board, int boardSize, bool &choicesChanged){
             cellB = getCellOptions(cellB);
             // cellA and cellB are twins if cellA & cellB has exactly 2 options
             int options = cellA & cellB;
-            if (bitCount(options)== 2){
+            if (bitCount(options) >= 2){
               //Check that no other cell have the any of the 2 options available
-              bool found = false;
+              int optionsUnion = 0; // get all options for all left cells
               for (int t = 0; t < boardSize; t++)
               {
                 if (t != i && t != j){
-                  if (options & getCellOptions(board[t*boardSize + c]) != 0){
-                    found = true;
-                    break;
-                  }
+                  int tempCell = board[t*boardSize + c];
+                  optionsUnion = optionsUnion | tempCell;
                 }
               }
-              if !(found){
-                setOptions(board, A, options);
-                setOptions(board, B, options);
-                choicesChanged = true;
+              options = options & ~optionsUnion; // remove options that are in the union
+              if (bitCount(options) == 2){
+                if (options != cellA){
+                  setOptions(board, A, options);
+                  choicesChanged = true;
+                }
+                if (options != cellB){
+                  setOptions(board, B, options);
+                  choicesChanged = true;
+                }
               }
             }
           }
@@ -308,22 +499,29 @@ void tripletsInRow(int *board, int boardSize, bool &choicesChanged){
                 cellC = getCellOptions(cellC);
                 // cellA, cellB and cellC are triplets if (cellA & cellB & cellC) has exactly 3 options
                 int options = cellA & cellB & cellC;
-                if (bitCount(options)== 3){
-                  bool found = false;
+                if (bitCount(options) >= 3){
+                  int optionsUnion = 0; // get all options for all left cells
                   for (int t = 0; t < boardSize; t++)
                   {
-                    if (t != i && t != j && t != k){
-                      if (options & getCellOptions(board[r+t]) != 0){
-                        found = true;
-                        break;
-                      }
+                    if (t != i && t != j){
+                      int tempCell = board[r+t];
+                      optionsUnion = optionsUnion | tempCell;
                     }
                   }
-                  if !(found){
-                    setOptions(board, A, options);
-                    setOptions(board, B, options);
-                    setOptions(board, C, options);
-                    choicesChanged = true;
+                  options = options & ~optionsUnion; // remove options that are in the union
+                  if (bitCount(options) == 3){
+                    if (options != cellA){
+                      setOptions(board, A, options);
+                      choicesChanged = true;
+                    }
+                    if (options != cellB){
+                      setOptions(board, B, options);
+                      choicesChanged = true;
+                    }
+                    if (options != cellC){
+                      setOptions(board, C, options);
+                      choicesChanged = true;
+                    }
                   }
                 }
               }
@@ -334,7 +532,6 @@ void tripletsInRow(int *board, int boardSize, bool &choicesChanged){
     }
   }
 }
-
 void tripletsInBox(int *board, int boardSize, bool &choicesChanged){
   // We could assume that every empty cell has at least 2 options, therefore no need for filtering (2+)-option cells
   int A;
@@ -371,22 +568,29 @@ void tripletsInBox(int *board, int boardSize, bool &choicesChanged){
                   cellC = getCellOptions(cellC);
                   // cellA, cellB and cellC are triplets if (cellA & cellB & cellC) has exactly 3 options
                   int options = cellA & cellB & cellC;
-                  if (bitCount(options)== 3){
-                    bool found = false;
+                  if (bitCount(options) >= 3){
+                    int optionsUnion = 0; // get all options for all left cells
                     for (int t = 0; t < boardSize; t++)
                     {
-                      if (t != i && t != j && t != k){
-                        if (options & getCellOptions(board[((t/n))*boardSize + (t%n) + box_index]) != 0){
-                          found = true;
-                          break;
-                        }
+                      if (t != i && t != j){
+                        int tempCell = board[((t/n))*boardSize + (t%n) + box_index];
+                        optionsUnion = optionsUnion | tempCell;
                       }
                     }
-                    if !(found){
-                      setOptions(board, A, options);
-                      setOptions(board, B, options);
-                      setOptions(board, C, options);
-                      choicesChanged = true;
+                    options = options & ~optionsUnion; // remove options that are in the union
+                    if (bitCount(options) == 3){
+                      if (options != cellA){
+                        setOptions(board, A, options);
+                        choicesChanged = true;
+                      }
+                      if (options != cellB){
+                        setOptions(board, B, options);
+                        choicesChanged = true;
+                      }
+                      if (options != cellC){
+                        setOptions(board, C, options);
+                        choicesChanged = true;
+                      }
                     }
                   }
                 }
@@ -398,7 +602,6 @@ void tripletsInBox(int *board, int boardSize, bool &choicesChanged){
     }
   }
 }
-
 void tripletsInColumn(int *board, int boardSize, bool &choicesChanged){
   // We could assume that every empty cell has at least 2 options, therefore no need for filtering (2+)-option cells
   int A;
@@ -431,22 +634,29 @@ void tripletsInColumn(int *board, int boardSize, bool &choicesChanged){
                 cellC = getCellOptions(cellC);
                 // cellA, cellB and cellC are triplets if (cellA & cellB & cellC) has exactly 3 options
                 int options = cellA & cellB & cellC;
-                if (bitCount(options)== 3){
-                  bool found = false;
+                if (bitCount(options) >= 3){
+                  int optionsUnion = 0; // get all options for all left cells
                   for (int t = 0; t < boardSize; t++)
                   {
-                    if (t != i && t != j && t != k){
-                      if (options & getCellOptions(board[t*boardSize + c]) != 0){
-                        found = true;
-                        break;
-                      }
+                    if (t != i && t != j){
+                      int tempCell = board[t*boardSize + c];
+                      optionsUnion = optionsUnion | tempCell;
                     }
                   }
-                  if !(found){
-                    setOptions(board, A, options);
-                    setOptions(board, B, options);
-                    setOptions(board, C, options);
-                    choicesChanged = true;
+                  options = options & ~optionsUnion; // remove options that are in the union
+                  if (bitCount(options) == 3){
+                    if (options != cellA){
+                      setOptions(board, A, options);
+                      choicesChanged = true;
+                    }
+                    if (options != cellB){
+                      setOptions(board, B, options);
+                      choicesChanged = true;
+                    }
+                    if (options != cellC){
+                      setOptions(board, C, options);
+                      choicesChanged = true;
+                    }
                   }
                 }
               }
@@ -457,44 +667,64 @@ void tripletsInColumn(int *board, int boardSize, bool &choicesChanged){
     }
   }
 }
-
 void twins(int *board, int boardSize, bool &choicesChanged) {
+  printf("On twins:\n");
   twinsInRow(board, boardSize, choicesChanged);
   twinsInBox(board, boardSize, choicesChanged);//Some overlapping work will occur
   twinsInColumn(board, boardSize, choicesChanged);
 }
 
 void triplets(int *board, int boardSize, bool &choicesChanged) {
-
+  printf("on triplets\n" );
   tripletsInRow(board, boardSize, choicesChanged);
   tripletsInBox(board, boardSize, choicesChanged);//Some overlapping work will occur
   tripletsInColumn(board, boardSize, choicesChanged);
 }
 
-bool humanistic(int *board, int boardSize) {
+bool humanistic(int *board, int boardSize, int n) {
   /* return false if board has no solution
      otherwise (i.e. if solution found or algorithm makes no more changes) return true */
 
   //in some step of algorithm, a cell was written to with its final value
   bool cellChanged = true;
-  //in some step of algorithm, choices were elliminated from some cell
+  //in some step of algorithm, choices were eliminated from some cell
   bool choicesChanged = true;
+  printBoard(board, boardSize);
   while (cellChanged || choicesChanged) {
     if (cellChanged) {
       cellChanged = false;
-      ellimination(board, boardSize, cellChanged);
+      if (!elimination(board, boardSize, cellChanged, n)) return false;
+      if (cellChanged) printBoard(board, boardSize);
       if (cellChanged) continue;
-      loneRanger(board, boardSize, cellChanged);
+      loneRanger(board, boardSize, cellChanged, n);
+      if (cellChanged) printBoard(board, boardSize);
       if (cellChanged) continue;
     }
     if (choicesChanged) {
       choicesChanged = false;
       twins(board, boardSize, choicesChanged);
+      if (choicesChanged) printBoard(board, boardSize);
       if (choicesChanged) continue;
       triplets(board, boardSize, choicesChanged);
+      if (choicesChanged) printBoard(board, boardSize);
     }
   }
   return true;
+}
+
+
+
+void initialChoiceElm(int *board, int boardSize, int n) {
+  //n is square root of board size
+  for (int row = 0; row < boardSize; row++) {
+    for (int col = 0; col < boardSize; col++) {
+      int i = row * boardSize + col;
+      if (board[i] % (1<<VALUEBITS)) {
+        //if the cell in the board has a value
+        eliminateChoices(board, boardSize, row, col, n);
+      }
+    }
+  }
 }
 
 int main(int argc, const char *argv[])
@@ -562,6 +792,11 @@ int main(int argc, const char *argv[])
   /* Initialize additional data structures needed in the algorithm 
    * here if you feel it's needed. */
 
+  //do initial choice elimination based on given board
+  initialChoiceElm(board, boardSize, n);
+
+  //printBoard(board, boardSize);
+
 
   error = 0;
 
@@ -582,7 +817,7 @@ int main(int argc, const char *argv[])
   {
 
     //Humanistic algorithm
-    if (!humanistic(board, boardSize)){
+    if (!humanistic(board, boardSize, n)){
       //no solution exists
     }
 
@@ -591,6 +826,8 @@ int main(int argc, const char *argv[])
   compute_time += duration_cast<dsec>(Clock::now() - compute_start).count();
   printf("Computation Time: %lf.\n", compute_time);
   
+  correctnessChecker(board, boardSize);
+
   /* OUTPUT YOUR RESULTS TO FILES HERE */
   char input_filename_cpy[BUFSIZE];
   strcpy(input_filename_cpy, input_filename);
