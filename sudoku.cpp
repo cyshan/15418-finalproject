@@ -56,6 +56,12 @@ static void show_help(const char *program_path)
     printf("\t-n <num_of_threads> (required)\n");
 }
 
+void printBoard(int *board, int boardSize) {
+  for (int i = 0; i < boardSize * boardSize; i++) {
+    printf("%d\n", board[i]);
+  }
+}
+
 
 int maxInt(int a, int b) { return (a > b)? a : b; }
 int minInt(int a, int b) { return (a < b)? a : b; }
@@ -123,6 +129,55 @@ bool humanistic(int *board, int boardSize) {
   return true;
 }
 
+void elliminateChoices(int *board, int boardSize, int row, int col, int n) {
+  //number to elliminate as option from relevant cells
+  int num = board[row * boardSize + col] % (1<<VALUEBITS);
+  //filter for removing options from cells
+  int filter = ~(1 << (VALUEBITS + num));
+  for (int rowI = 0; rowI < boardSize; rowI++) {
+    //elliminate choices for the column
+    if (rowI != row) {
+      int i = rowI * boardSize + col;
+      board[i] = board[i] & filter; 
+    }
+  }
+
+  for (int colI = 0; colI < boardSize; colI++) {
+    //elliminate choices for the row
+    if (colI != col) {
+      int i = row * boardSize + colI;
+      board[i] = board[i] & filter; 
+    }
+  }
+
+  /*base row and col for the square the cell is located in
+   (the index of upper-right corner of the square) */
+  int baseRow = row / n * n;
+  int baseCol = col / n * n;
+  for (int squareI = 0; squareI < boardSize; squareI++){
+    //elliminate choices for the square
+    int squareRow = baseRow + squareI / n;
+    int squareCol = baseCol + squareI % n;
+    if (squareCol != col || squareRow != row) {
+      int i = squareRow * boardSize + squareCol;
+      board[i] = board[i] & filter;
+    }
+  }
+}
+
+void initialChoiceElm(int *board, int boardSize, int n) {
+  //n is square root of board size
+  for (int row = 0; row < boardSize; row++) {
+    for (int col = 0; col < boardSize; col++) {
+      int i = row * boardSize + col;
+      if (board[i] % (1<<VALUEBITS)) {
+        //if the cell in the board has a value
+        elliminateChoices(board, boardSize, row, col, n);
+      }
+    }
+  }
+}
+
 int main(int argc, const char *argv[])
 {
   using namespace std::chrono;
@@ -187,6 +242,11 @@ int main(int argc, const char *argv[])
 
   /* Initialize additional data structures needed in the algorithm 
    * here if you feel it's needed. */
+
+  //do initial choice ellimination based on given board
+  initialChoiceElm(board, boardSize, n);
+
+  printBoard(board, boardSize);
 
 
   error = 0;
