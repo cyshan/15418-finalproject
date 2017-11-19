@@ -9,6 +9,7 @@
 #include <cstring>
 #include <assert.h>
 #include <omp.h>
+
 #include "mic.h"
 
 #define BUFSIZE 1024
@@ -56,12 +57,6 @@ static void show_help(const char *program_path)
     printf("\t-n <num_of_threads> (required)\n");
 }
 
-void printBoard(int *board, int boardSize) {
-  for (int i = 0; i < boardSize * boardSize; i++) {
-    printf("%d\n", board[i]);
-  }
-}
-
 
 int maxInt(int a, int b) { return (a > b)? a : b; }
 int minInt(int a, int b) { return (a < b)? a : b; }
@@ -84,7 +79,7 @@ void addToBoard(int num, int i, int *board, int boardSize) {
 }
 
 void writeFile(FILE *output_file, int *board, int i) {
-  fprintf(output_file, "%d ", board[i] % (1<<VALUEBITS));
+  fprintf(output_file, "%02d ", board[i] % (1<<VALUEBITS));
 }
 
 void eliminateChoices(int *board, int boardSize, int row, int col, int n) {
@@ -122,6 +117,12 @@ void eliminateChoices(int *board, int boardSize, int row, int col, int n) {
     }
   }
 }
+int log2(int n) {
+  //REQUIRES: n is a power of 2, n != 0
+  int log = 0;
+  while (n >>= 1) ++log;
+  return log;
+}
 
 bool elimination(int *board, int boardSize, bool &cellChanged, int n) {
   //return false iff the board given has no valid solution
@@ -136,10 +137,7 @@ bool elimination(int *board, int boardSize, bool &cellChanged, int n) {
       if (!(value & (value - 1))) {
         //value is a power of 2, aka there is only one value this cell can take
         cellChanged = true;
-        //find position of the single choice
-        int pos = 0;
-        while (value >>= 1) ++pos;
-        board[i] += pos;
+        board[i] += log2(value);
         eliminateChoices(board, boardSize, i / boardSize, i % boardSize, n);
       }
     }
@@ -148,7 +146,74 @@ bool elimination(int *board, int boardSize, bool &cellChanged, int n) {
 }
 
 void loneRanger(int *board, int boardSize, bool &cellChanged, int n) {
-           
+  for (int i = 0; i < boardSize * boardSize; i++) {
+    int value = board[i];
+    if (!(value % (1<<VALUEBITS))) {
+
+      //cell is currently empty
+      int row = i / boardSize;
+      int col = i % boardSize;
+
+      //create a mask to find which choices the other cells in col have
+      int mask = 0;
+      for (int rowI = 0; rowI < boardSize; rowI++) {
+        if (rowI != row) mask = mask | board[rowI * boardSize + col];
+      }
+
+      //mask out the choices of the other cells in col
+      value = value & (~mask);
+
+      //if value still has 1 choice
+      if (value && !(value & (value - 1))) {
+        cellChanged = true;
+        //write choice to cell and eliminate choices from relevant cells
+        board[i] += log2(value) - VALUEBITS;
+        eliminateChoices(board, boardSize, row, col, n);
+        continue;
+      }
+
+      //do the same for rows and blocks
+      value = board[i];
+      mask = 0;
+      for (int colI = 0; colI < boardSize; colI++) {
+        if (colI != col) {
+          mask = mask | board[row * boardSize + colI];
+        }
+      }
+
+      value = value & (~mask);
+
+      if (value && !(value & (value - 1))) {
+        cellChanged = true;
+        board[i] += log2(value) - VALUEBITS;
+        eliminateChoices(board, boardSize, row, col, n);
+        continue;
+      }
+
+      /*base row and col for the square the cell is located in
+       (the index of upper-right corner of the square) */
+      int baseRow = row / n * n;
+      int baseCol = col / n * n;
+
+      value = board[i];
+      mask = 0;
+      for (int squareI = 0; squareI < boardSize; squareI++){
+        int squareRow = baseRow + squareI / n;
+        int squareCol = baseCol + squareI % n;
+        if (squareCol != col || squareRow != row) {
+          mask = mask | board[squareRow * boardSize + squareCol];
+        }
+      }
+      
+      value = value & (~mask);
+
+      if (value && !(value & (value - 1))) {
+        cellChanged = true;
+        board[i] += log2(value) - VALUEBITS;
+        eliminateChoices(board, boardSize, row, col, n);
+      }
+    }
+  }
 }
 
 void twins(int *board, int boardSize, bool &choicesChanged) {
