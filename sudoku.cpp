@@ -57,12 +57,6 @@ static void show_help(const char *program_path)
     printf("\t-n <num_of_threads> (required)\n");
 }
 
-void printBoard(int *board, int boardSize) {
-  for (int i = 0; i < boardSize * boardSize; i++) {
-    printf("%d\n", board[i]);
-  }
-}
-
 
 int maxInt(int a, int b) { return (a > b)? a : b; }
 int minInt(int a, int b) { return (a < b)? a : b; }
@@ -123,8 +117,6 @@ void eliminateChoices(int *board, int boardSize, int row, int col, int n) {
     }
   }
 }
-
-<<<<<<< HEAD
 int log2(int n) {
   //REQUIRES: n is a power of 2, n != 0
   int log = 0;
@@ -132,8 +124,6 @@ int log2(int n) {
   return log;
 }
 
-=======
->>>>>>> master
 bool elimination(int *board, int boardSize, bool &cellChanged, int n) {
   //return false iff the board given has no valid solution
   for (int i = 0; i < boardSize * boardSize; i++) {
@@ -147,14 +137,7 @@ bool elimination(int *board, int boardSize, bool &cellChanged, int n) {
       if (!(value & (value - 1))) {
         //value is a power of 2, aka there is only one value this cell can take
         cellChanged = true;
-<<<<<<< HEAD
         board[i] += log2(value);
-=======
-        //find position of the single choice
-        int pos = 0;
-        while (value >>= 1) ++pos;
-        board[i] += pos;
->>>>>>> master
         eliminateChoices(board, boardSize, i / boardSize, i % boardSize, n);
       }
     }
@@ -163,7 +146,6 @@ bool elimination(int *board, int boardSize, bool &cellChanged, int n) {
 }
 
 void loneRanger(int *board, int boardSize, bool &cellChanged, int n) {
-<<<<<<< HEAD
   for (int i = 0; i < boardSize * boardSize; i++) {
     int value = board[i];
     if (!(value % (1<<VALUEBITS))) {
@@ -232,9 +214,6 @@ void loneRanger(int *board, int boardSize, bool &cellChanged, int n) {
       }
     }
   }
-=======
-           
->>>>>>> master
 }
 
 void twins(int *board, int boardSize, bool &choicesChanged) {
@@ -259,10 +238,6 @@ bool humanistic(int *board, int boardSize, int n) {
       if (!elimination(board, boardSize, cellChanged, n)) return false;
       if (cellChanged) continue;
       loneRanger(board, boardSize, cellChanged, n);
-<<<<<<< HEAD
-      //printf("%d\n", cellChanged);
-=======
->>>>>>> master
       if (cellChanged) continue;
     }
     if (choicesChanged) {
