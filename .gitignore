@@ -33,4 +33,8 @@
 
 # Output files
 file_outputs/
+<<<<<<< HEAD
 job_outputs/
+=======
+job_outputs/
+>>>>>>> master
