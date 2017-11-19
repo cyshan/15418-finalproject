@@ -30,3 +30,7 @@
 *.exe
 *.out
 *.app
+
+# Output files
+file_outputs/
+job_outputs/
