@@ -9,6 +9,7 @@
 #include <cstring>
 #include <assert.h>
 #include <omp.h>
+
 #include "mic.h"
 #include <math.h> 
 #include <string> 
@@ -70,7 +71,7 @@ std::string cellToString(int cell, int boardSize){
   return s;
 }
 void printBoard(int *board, int boardSize) {
-  printf("\n\n\n\n\n");
+  printf("\n\n\n");
   for (int r = 0; r < boardSize; r++) {
     //for (int i = 0; i < boardSize; i++) printf("_____");
     for (int c = 0; c < boardSize; c++)
@@ -181,11 +182,11 @@ void correctnessChecker(int *board, int boardSize){
   checkBoxes(board, boardSize, correctness);
 
   if (correctness){
-    printf("\n\n!!!!!Correctness is passed!!!!!\n\n");
+    printf("\n\nCorrectness: True\n");
   }
   else
   {
-    printf("\n\n!!!!!Correctness is failed!!!!!\n\n");
+    printf("\n\nCorrectness: False\n");
   }
 }
 void addToBoard(int num, int i, int *board, int boardSize) {
@@ -206,7 +207,7 @@ void addToBoard(int num, int i, int *board, int boardSize) {
 }
 
 void writeFile(FILE *output_file, int *board, int i) {
-  fprintf(output_file, "%d ", board[i] % (1<<VALUEBITS));
+  fprintf(output_file, "%02d ", board[i] % (1<<VALUEBITS));
 }
 
 void eliminateChoices(int *board, int boardSize, int row, int col, int n) {
@@ -344,6 +345,7 @@ void loneRanger(int *board, int boardSize, bool &cellChanged, int n) {
     }
   }
 }
+
 /*
  * bitCount - returns count of number of 1's in word
  *   Examples: bitCount(5) = 2, bitCount(7) = 3
@@ -471,13 +473,10 @@ void twinsInBox(int *board, int boardSize, bool &choicesChanged){
                   if (options != cellA){
                   setOptions(board, A, options);
                   choicesChanged = true;
-                  printf(" twinsInBox %d\n", A);
-
                   }
                   if (options != cellB){
                     setOptions(board, B, options);
                     choicesChanged = true;
-                  printf(" twinsInBox %d\n", B);
                   }
                 }
               }
@@ -528,12 +527,10 @@ void twinsInColumn(int *board, int boardSize, bool &choicesChanged){
                 if (options != cellA){
                   setOptions(board, A, options);
                   choicesChanged = true;
-                  printf(" twinsInColumn %d\n", A);
                 }
                 if (options != cellB){
                   setOptions(board, B, options);
                   choicesChanged = true;
-                  printf(" twinsInColumn %d\n", B);
                 }
               }
             }
@@ -609,6 +606,7 @@ void tripletsInRow(int *board, int boardSize, bool &choicesChanged){
     }
   }
 }
+
 void tripletsInBox(int *board, int boardSize, bool &choicesChanged){
   // We could assume that every empty cell has at least 2 options, therefore no need for filtering (2+)-option cells
   int A;
@@ -744,15 +742,14 @@ void tripletsInColumn(int *board, int boardSize, bool &choicesChanged){
     }
   }
 }
+
 void twins(int *board, int boardSize, bool &choicesChanged) {
-  printf("On twins:\n");
   twinsInRow(board, boardSize, choicesChanged);
   twinsInBox(board, boardSize, choicesChanged);//Some overlapping work will occur
   twinsInColumn(board, boardSize, choicesChanged);
 }
 
 void triplets(int *board, int boardSize, bool &choicesChanged) {
-  printf("on triplets\n" );
   tripletsInRow(board, boardSize, choicesChanged);
   tripletsInBox(board, boardSize, choicesChanged);//Some overlapping work will occur
   tripletsInColumn(board, boardSize, choicesChanged);
@@ -771,12 +768,10 @@ bool humanistic(int *board, int boardSize, int n) {
     if (cellChanged) {
       cellChanged = false;
       if (!elimination(board, boardSize, cellChanged, n)) return false;
-      if (cellChanged) printBoard(board, boardSize);
       if (cellChanged) continue;
     }
     if (choicesChanged) {
       loneRanger(board, boardSize, cellChanged, n);
-      if (cellChanged) printBoard(board, boardSize);
       if (cellChanged) continue;
       choicesChanged = false;
       twins(board, boardSize, choicesChanged);
