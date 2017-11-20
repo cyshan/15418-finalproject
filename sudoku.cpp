@@ -273,8 +273,8 @@ bool elimination(int *board, int boardSize, bool &cellChanged, int n) {
   return true;
 }
 
+
 void loneRanger(int *board, int boardSize, bool &cellChanged, int n) {
-  printf("On loneRanger:\n");
   for (int i = 0; i < boardSize * boardSize; i++) {
     int value = board[i];
     if (!(value % (1<<VALUEBITS))) {
@@ -296,7 +296,7 @@ void loneRanger(int *board, int boardSize, bool &cellChanged, int n) {
       if (value && !(value & (value - 1))) {
         cellChanged = true;
         //write choice to cell and eliminate choices from relevant cells
-        board[i] += log2(value) - VALUEBITS;
+        board[i] = value + log2(value) - VALUEBITS;
         eliminateChoices(board, boardSize, row, col, n);
         continue;
       }
@@ -314,7 +314,7 @@ void loneRanger(int *board, int boardSize, bool &cellChanged, int n) {
 
       if (value && !(value & (value - 1))) {
         cellChanged = true;
-        board[i] += log2(value) - VALUEBITS;
+        board[i] = value + log2(value) - VALUEBITS;
         eliminateChoices(board, boardSize, row, col, n);
         continue;
       }
@@ -338,13 +338,12 @@ void loneRanger(int *board, int boardSize, bool &cellChanged, int n) {
 
       if (value && !(value & (value - 1))) {
         cellChanged = true;
-        board[i] += log2(value) - VALUEBITS;
+        board[i] = value + log2(value) - VALUEBITS;
         eliminateChoices(board, boardSize, row, col, n);
       }
     }
   }
 }
-
 /*
  * bitCount - returns count of number of 1's in word
  *   Examples: bitCount(5) = 2, bitCount(7) = 3
