@@ -254,7 +254,6 @@ int log2(int n) {
 
 bool elimination(int *board, int boardSize, bool &cellChanged, int n) {
   //return false iff the board given has no valid solution
-  printf("On Elimination:\n");
   for (int i = 0; i < boardSize * boardSize; i++) {
     int value = board[i];
     if (!(value % (1<<VALUEBITS))) {
@@ -763,7 +762,6 @@ bool humanistic(int *board, int boardSize, int n) {
   bool cellChanged = true;
   //in some step of algorithm, choices were eliminated from some cell
   bool choicesChanged = true;
-  printBoard(board, boardSize);
   while (cellChanged || choicesChanged) {
     if (cellChanged) {
       cellChanged = false;
