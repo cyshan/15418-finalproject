@@ -842,7 +842,7 @@ bool humanistic(int *board, int boardSize, int n) {
       loneRanger(board, boardSize, cellChanged, n);
       if (cellChanged) continue;
       choicesChanged = false;
-      //boxElimination(board, boardSize, choicesChanged, n);
+      boxElimination(board, boardSize, choicesChanged, n);
       if (choicesChanged) continue;
       twins(board, boardSize, choicesChanged);
       if (choicesChanged) continue;
