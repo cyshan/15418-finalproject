@@ -9,6 +9,7 @@
 #include <cstring>
 #include <assert.h>
 #include <omp.h>
+
 #include "mic.h"
 #include <math.h> 
 #include <string> 
@@ -63,16 +64,22 @@ std::string cellToString(int cell, int boardSize){
   std::string s = "";
   for (int i = 0; i<= boardSize; i++){
     if (cell & 1){
-      s += std::to_string(i)+",";
+      s += std::to_string(i)+"";
+    }
+    else{
+      s += " ";
     }
     cell = cell >>1;
   }
   return s;
 }
 void printBoard(int *board, int boardSize) {
-  printf("\n\n\n\n\n");
+  printf("\n\n\n");
   for (int r = 0; r < boardSize; r++) {
-    //for (int i = 0; i < boardSize; i++) printf("_____");
+    if ((r % (int)sqrt(boardSize)) == 0){
+      for (int i = 0; i < boardSize; i++) printf(" ___________ ");
+      printf("\n");
+    }
     for (int c = 0; c < boardSize; c++)
     {
       std::string str = cellToString(board[r*boardSize + c],boardSize);
@@ -110,10 +117,6 @@ void checkRows(int *board, int boardSize, bool &correctness){
           }
         }
       }
-      else
-      {
-        //printf("Cell %d is empty!\n", A);
-      }
     }
   }
 }
@@ -139,10 +142,6 @@ void checkBoxes(int *board, int boardSize, bool &correctness){
             }
           }
         }
-        else
-        {
-            //printf("Cell %d is empty!\n", A);
-        }
       }
     }
   }
@@ -166,10 +165,6 @@ void checkColumns(int *board, int boardSize, bool &correctness){
           }
         }
       }
-      else
-      {
-        //printf("Cell %d is empty!\n", A);
-      }
     }
   }
 }
@@ -181,11 +176,11 @@ void correctnessChecker(int *board, int boardSize){
   checkBoxes(board, boardSize, correctness);
 
   if (correctness){
-    printf("\n\n!!!!!Correctness is passed!!!!!\n\n");
+    printf("\n\nCorrectness: True\n");
   }
   else
   {
-    printf("\n\n!!!!!Correctness is failed!!!!!\n\n");
+    printf("\n\nCorrectness: False\n");
   }
 }
 void addToBoard(int num, int i, int *board, int boardSize) {
@@ -206,7 +201,7 @@ void addToBoard(int num, int i, int *board, int boardSize) {
 }
 
 void writeFile(FILE *output_file, int *board, int i) {
-  fprintf(output_file, "%d ", board[i] % (1<<VALUEBITS));
+  fprintf(output_file, "%02d ", board[i] % (1<<VALUEBITS));
 }
 
 void eliminateChoices(int *board, int boardSize, int row, int col, int n) {
@@ -253,7 +248,6 @@ int log2(int n) {
 
 bool elimination(int *board, int boardSize, bool &cellChanged, int n) {
   //return false iff the board given has no valid solution
-  printf("On Elimination:\n");
   for (int i = 0; i < boardSize * boardSize; i++) {
     int value = board[i];
     if (!(value % (1<<VALUEBITS))) {
@@ -344,6 +338,89 @@ void loneRanger(int *board, int boardSize, bool &cellChanged, int n) {
     }
   }
 }
+
+int getCellOptions(int cellA){
+  //returns the options part only 
+  return cellA >> VALUEBITS;
+}
+
+void setOptions(int *board, int index, int options){
+  board[index] = options << VALUEBITS;
+}
+
+void removeOption(int *board, int index, int option){
+  int mask = ~(1 << (option + VALUEBITS));
+  board[index] = board[index] & mask;
+}
+
+int hasOption(int cell, int option){
+  return cell & (1 << (option + VALUEBITS));
+}
+
+void eliminateFromBoxRow(int *board, int boxSize ,int index, int option, bool &choicesChanged){
+  for (int col = 0; col < boxSize; col++)
+  {
+    if (hasOption(board[index + col],option))
+    { 
+      choicesChanged = true;
+      removeOption(board, index + col, option);
+
+    }
+  }
+}
+void eliminateFromBoxCol(int *board, int boardsize, int boxSize ,int index, int option, bool &choicesChanged){
+  for (int row = 0; row < boxSize; row++)
+  {
+    if (hasOption(board[index + row*boardsize],option))
+    { 
+      choicesChanged = true;
+      removeOption(board, index + row*boardsize, option);
+    }
+  }
+}
+
+void boxElimination(int *board, int boardSize, bool &choicesChanged, int n){
+  for (int bx = 0; bx < n; bx++)
+  {
+    for (int by = 0; by < n; by++)
+    {
+      int box_index = bx*n*boardSize + by*n;
+      // Compare every 2 distenct cells
+      for (int option = 1; option <= boardSize; option++){
+        int row = -1; //uninitialized
+        int col = -1; //uninitialized
+        bool optionOnRow = true;
+        bool optionOnCol = true;
+        for (int i = 0; i < boardSize; i++){
+          int A = ((i/n))*boardSize + (i%n) + box_index;
+          int cellA = board[A];
+          if (isEmpty(cellA)){ //avoid already set cells
+            if (hasOption(cellA, option)){
+              if (row == -1) {
+                row = i/n;
+                col = i%n;
+              } 
+              if (row != i/n) optionOnRow = false;
+              if (col != i%n) optionOnCol = false;
+            }
+          }
+        }
+        if (row != -1 && optionOnRow){
+          for (int j = 0; j < n; j++)
+          {
+            if (j != by) eliminateFromBoxRow(board, n, bx*n*boardSize + row*boardSize + j*n,option, choicesChanged);
+          }
+        }
+        if (col != -1 && optionOnCol){
+          for (int j = 0; j < n; j++)
+          {
+            if (j != bx) eliminateFromBoxCol(board, boardSize, n, j*n*boardSize + by*n + col,option, choicesChanged);
+          }
+        }
+      }
+    }
+  }
+}
 /*
  * bitCount - returns count of number of 1's in word
  *   Examples: bitCount(5) = 2, bitCount(7) = 3
@@ -365,14 +442,6 @@ int bitCount(int x) {
   return (x & every16) + ((x >> 16)& every16);//4
 }
 
-int getCellOptions(int cellA){
-  //returns the options part only 
-  return cellA >> VALUEBITS;
-}
-
-void setOptions(int *board, int index, int options){
-  board[index] = options << VALUEBITS;
-}
 void twinsInRow(int *board, int boardSize, bool &choicesChanged){
   // We could assume that every empty cell has at least 2 options, therefore no need for filtering (2+)-option cells
   int A;
@@ -410,14 +479,10 @@ void twinsInRow(int *board, int boardSize, bool &choicesChanged){
                 if (options != cellA){
                   setOptions(board, A, options);
                   choicesChanged = true;
-                  printf(" twinsInRow %d\n", A);
-                  printf(" r = %d, i = %d, A = %d j = %d, B = %d\n", r,i,A,j,B);
                 }
                 if (options != cellB){
                   setOptions(board, B, options);
                   choicesChanged = true;
-                  printf(" twinsInRow %d\n", B);
-                  printf(" r = %d, i = %d, A = %d j = %d, B = %d\n", r,i,A,j,B);
                 }
               }
             }
@@ -471,13 +536,10 @@ void twinsInBox(int *board, int boardSize, bool &choicesChanged){
                   if (options != cellA){
                   setOptions(board, A, options);
                   choicesChanged = true;
-                  printf(" twinsInBox %d\n", A);
-
                   }
                   if (options != cellB){
                     setOptions(board, B, options);
                     choicesChanged = true;
-                  printf(" twinsInBox %d\n", B);
                   }
                 }
               }
@@ -528,12 +590,10 @@ void twinsInColumn(int *board, int boardSize, bool &choicesChanged){
                 if (options != cellA){
                   setOptions(board, A, options);
                   choicesChanged = true;
-                  printf(" twinsInColumn %d\n", A);
                 }
                 if (options != cellB){
                   setOptions(board, B, options);
                   choicesChanged = true;
-                  printf(" twinsInColumn %d\n", B);
                 }
               }
             }
@@ -609,6 +669,7 @@ void tripletsInRow(int *board, int boardSize, bool &choicesChanged){
     }
   }
 }
+
 void tripletsInBox(int *board, int boardSize, bool &choicesChanged){
   // We could assume that every empty cell has at least 2 options, therefore no need for filtering (2+)-option cells
   int A;
@@ -744,15 +805,14 @@ void tripletsInColumn(int *board, int boardSize, bool &choicesChanged){
     }
   }
 }
+
 void twins(int *board, int boardSize, bool &choicesChanged) {
-  printf("On twins:\n");
   twinsInRow(board, boardSize, choicesChanged);
   twinsInBox(board, boardSize, choicesChanged);//Some overlapping work will occur
   twinsInColumn(board, boardSize, choicesChanged);
 }
 
 void triplets(int *board, int boardSize, bool &choicesChanged) {
-  printf("on triplets\n" );
   tripletsInRow(board, boardSize, choicesChanged);
   tripletsInBox(board, boardSize, choicesChanged);//Some overlapping work will occur
   tripletsInColumn(board, boardSize, choicesChanged);
@@ -766,24 +826,21 @@ bool humanistic(int *board, int boardSize, int n) {
   bool cellChanged = true;
   //in some step of algorithm, choices were eliminated from some cell
   bool choicesChanged = true;
-  printBoard(board, boardSize);
   while (cellChanged || choicesChanged) {
     if (cellChanged) {
       cellChanged = false;
       if (!elimination(board, boardSize, cellChanged, n)) return false;
-      if (cellChanged) printBoard(board, boardSize);
       if (cellChanged) continue;
     }
     if (choicesChanged) {
       loneRanger(board, boardSize, cellChanged, n);
-      if (cellChanged) printBoard(board, boardSize);
       if (cellChanged) continue;
       choicesChanged = false;
+      boxElimination(board, boardSize, choicesChanged, n);
+      if (choicesChanged) continue;
       twins(board, boardSize, choicesChanged);
-      if (choicesChanged) printBoard(board, boardSize);
       if (choicesChanged) continue;
       triplets(board, boardSize, choicesChanged);
-      if (choicesChanged) printBoard(board, boardSize);
     }
   }
   return true;
