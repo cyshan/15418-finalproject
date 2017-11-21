@@ -86,6 +86,7 @@ void printBoard(int *board, int boardSize) {
 
 int maxInt(int a, int b) { return (a > b)? a : b; }
 int minInt(int a, int b) { return (a < b)? a : b; }
+
 bool isEmpty(int cell){
   // returns true if value is not set yet, false otherwise
   int allOnes = (1 << (VALUEBITS+1)) -1;
@@ -782,6 +783,32 @@ bool humanistic(int *board, int boardSize, int n) {
   return true;
 }
 
+int *bruteForce(int *board, int boardSize, int n) {
+  int totalSquares = boardSize * boardSize;
+  for (int i=0; i < totalSquares; i++) {
+    int value = board[i];
+    if (!(value % (1<<VALUEBITS))) { //cell is empty
+      value = value >> VALUEBITS;
+      int choice = 0;
+      while (value) {
+        value >>= 1;
+        choice++;
+        if (value % 2) {
+          int *newBoard = (int *)calloc(totalSquares, sizeof(int));
+          memcpy(newBoard, board, totalSquares * sizeof(int));
+          newBoard[i] = (1 << (VALUEBITS + choice)) + choice;
+          eliminateChoices(newBoard, boardSize, i / boardSize, i % boardSize, n);
+          int *solution = bruteForce(newBoard, boardSize, n);
+          if (solution) return solution; //if a solution exists, return it
+          free(newBoard);
+        }
+      }
+      return NULL; //there is no solution for the given board
+    }
+  }
+  return board;
+}
+
 void initialChoiceElm(int *board, int boardSize, int n) {
   //n is square root of board size
   for (int row = 0; row < boardSize; row++) {
@@ -887,6 +914,8 @@ int main(int argc, const char *argv[])
     if (!humanistic(board, boardSize, n)){
       //no solution exists
     }
+
+    board = bruteForce(board, boardSize, n);
 
   }
 
