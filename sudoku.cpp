@@ -92,6 +92,7 @@ void printBoard(int *board, int boardSize) {
 
 int maxInt(int a, int b) { return (a > b)? a : b; }
 int minInt(int a, int b) { return (a < b)? a : b; }
+
 bool isEmpty(int cell){
   // returns true if value is not set yet, false otherwise
   int allOnes = (1 << (VALUEBITS+1)) -1;
@@ -170,6 +171,11 @@ void checkColumns(int *board, int boardSize, bool &correctness){
 }
 
 void correctnessChecker(int *board, int boardSize){
+  if (board == NULL) {
+    printf("No Solution\n");
+    return;
+  }
+
   bool correctness = true;
   checkRows(board, boardSize, correctness);
   checkColumns(board, boardSize, correctness);
@@ -846,6 +852,32 @@ bool humanistic(int *board, int boardSize, int n) {
   return true;
 }
 
+int *bruteForce(int *board, int boardSize, int n) {
+  int totalSquares = boardSize * boardSize;
+  for (int i=0; i < totalSquares; i++) {
+    int value = board[i];
+    if (!(value % (1<<VALUEBITS))) { //cell is empty
+      value = value >> VALUEBITS;
+      int choice = 0;
+      while (value) {
+        value = value>>1;
+        choice++;
+        if (value % 2) {
+          int *newBoard = (int *)calloc(totalSquares, sizeof(int));
+          memcpy(newBoard, board, totalSquares * sizeof(int));
+          newBoard[i] = (1 << (VALUEBITS + choice)) + choice;
+          eliminateChoices(newBoard, boardSize, i / boardSize, i % boardSize, n);
+          int *solution = bruteForce(newBoard, boardSize, n);
+          if (solution) return solution; //if a solution exists, return it
+          free(newBoard);
+        }
+      }
+      return NULL; //there is no solution for the given board
+    }
+  }
+  return board;
+}
+
 void initialChoiceElm(int *board, int boardSize, int n) {
   //n is square root of board size
   for (int row = 0; row < boardSize; row++) {
@@ -950,7 +982,8 @@ int main(int argc, const char *argv[])
     //Humanistic algorithm
     if (!humanistic(board, boardSize, n)){
       //no solution exists
-    }
+      board = NULL;
+    } else board = bruteForce(board, boardSize, n);
 
   }
 
@@ -959,33 +992,35 @@ int main(int argc, const char *argv[])
   
   correctnessChecker(board, boardSize);
 
-  /* OUTPUT YOUR RESULTS TO FILES HERE */
-  char input_filename_cpy[BUFSIZE];
-  strcpy(input_filename_cpy, input_filename);
-  char *filename = basename(input_filename_cpy);
-  filename[strlen(filename) - 4] = '\0';
-  char output_filename[BUFSIZE];
+  if (board != NULL) {
+    /* OUTPUT YOUR RESULTS TO FILES HERE */
+    char input_filename_cpy[BUFSIZE];
+    strcpy(input_filename_cpy, input_filename);
+    char *filename = basename(input_filename_cpy);
+    filename[strlen(filename) - 4] = '\0';
+    char output_filename[BUFSIZE];
 
 
-  sprintf(output_filename, "file_outputs/output_%s_%d.txt", filename, num_of_threads);
-  FILE *output_file = fopen(output_filename, "w");
-  if (!output_file) {
-    printf("Error: couldn't output file");
-    return -1;
-  }
-
-  fprintf(output_file, "%d\n", n);
-  
-  // WRITE TO FILE HERE
-
-  for (int row = 0; row < boardSize; row++) {
-    for (int col = 0; col < boardSize; col++) {
-      int i = boardSize * row + col;
-      writeFile(output_file, board, i);
+    sprintf(output_filename, "file_outputs/output_%s_%d.txt", filename, num_of_threads);
+    FILE *output_file = fopen(output_filename, "w");
+    if (!output_file) {
+      printf("Error: couldn't output file");
+      return -1;
     }
-    fprintf(output_file, "\n");
+
+    fprintf(output_file, "%d\n", n);
+    
+    // WRITE TO FILE HERE
+
+    for (int row = 0; row < boardSize; row++) {
+      for (int col = 0; col < boardSize; col++) {
+        int i = boardSize * row + col;
+        writeFile(output_file, board, i);
+      }
+      fprintf(output_file, "\n");
+    }
+    fclose(output_file);
   }
-  fclose(output_file);
 
   return 0;
 }
