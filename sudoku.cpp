@@ -77,7 +77,7 @@ void printBoard(int *board, int boardSize) {
   printf("\n\n\n");
   for (int r = 0; r < boardSize; r++) {
     if ((r % (int)sqrt(boardSize)) == 0){
-      for (int i = 0; i < boardSize; i++) printf(" ___________ ");
+      for (int i = 0; i < boardSize; i++) printf(" ____%d_____ ",r*boardSize +i);
       printf("\n");
     }
     for (int c = 0; c < boardSize; c++)
@@ -457,11 +457,13 @@ void twinsInRow(int *board, int boardSize, bool &choicesChanged){
       A = (r*boardSize) +i;
       cellA = board[A];
       if (isEmpty(cellA)){ //avoid already set cells
+        cellA = getCellOptions(cellA);
         for (int j = i+1; j < boardSize; j++)
         {
           B = (r*boardSize)+j;
           cellB = board[B];
           if (isEmpty(cellB)){ //avoid already set cells
+            cellB = getCellOptions(cellB);
             // cellA and cellB are twins if cellA & cellB has exactly 2 options
             int options = cellA & cellB;
             if (bitCount(options) >= 2){
@@ -471,7 +473,7 @@ void twinsInRow(int *board, int boardSize, bool &choicesChanged){
               {
                 if (t != i && t != j){
                   int tempCell = board[(r*boardSize)+t];
-                  optionsUnion = optionsUnion | (getCellOptions(tempCell)<<VALUEBITS);
+                  optionsUnion = optionsUnion | getCellOptions(tempCell);
                 }
               }
               options = options & ~optionsUnion; // remove options that are in the union
