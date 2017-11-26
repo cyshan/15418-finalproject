@@ -170,7 +170,19 @@ void checkColumns(int *board, int boardSize, bool &correctness){
   }
 }
 
-void correctnessChecker(int *board, int boardSize){
+void compareToOriginal(int *board, int *originalBoard, int boardSize, bool &correctness) {
+  for (int i = 0; i < boardSize * boardSize; ++i)
+  {
+    if (originalBoard[i] % (1 << VALUEBITS)) {
+      if (originalBoard[i] != board[i]) {
+        correctness = false;
+        return;
+      }
+    }
+  }
+}
+
+void correctnessChecker(int *board, int *originalBoard, int boardSize){
   if (board == NULL) {
     printf("No Solution\n");
     return;
@@ -180,6 +192,8 @@ void correctnessChecker(int *board, int boardSize){
   checkRows(board, boardSize, correctness);
   checkColumns(board, boardSize, correctness);
   checkBoxes(board, boardSize, correctness);
+
+  compareToOriginal(board, originalBoard, boardSize, correctness);
 
   if (correctness){
     printf("\n\nCorrectness: True\n");
@@ -861,14 +875,21 @@ int *bruteForce(int *board, int boardSize, int n) {
     if (!(value % (1<<VALUEBITS))) { //cell is empty
       value = value >> VALUEBITS;
       int choice = 0;
+      //printBoard(board, boardSize);
+      //printf("row: %d, col: %d\n", i/boardSize, i%boardSize);
       while (value) {
         value = value>>1;
         choice++;
         if (value % 2) {
+          //printf("choice: %d\n", choice);
           int *newBoard = (int *)calloc(totalSquares, sizeof(int));
           memcpy(newBoard, board, totalSquares * sizeof(int));
           newBoard[i] = (1 << (VALUEBITS + choice)) + choice;
           eliminateChoices(newBoard, boardSize, i / boardSize, i % boardSize, n);
+          if (!humanistic(board, boardSize, n)){
+            //no solution exists
+            return NULL;
+          } 
           int *solution = bruteForce(newBoard, boardSize, n);
           if (solution) return solution; //if a solution exists, return it
           free(newBoard);
@@ -940,6 +961,7 @@ int main(int argc, const char *argv[])
   int boardSize = n*n;
 
   int *board = (int *)calloc(boardSize * boardSize, sizeof(int));
+  
 
   //for parsing sudoku board
   int num;
@@ -953,6 +975,9 @@ int main(int argc, const char *argv[])
     fscanf(input, "\n");
   }
 
+  int *originalBoard = (int *)calloc(boardSize * boardSize, sizeof(int)); 
+  memcpy(originalBoard, board, boardSize * boardSize * sizeof(int));
+
 
   /* Initialize additional data structures needed in the algorithm 
    * here if you feel it's needed. */
@@ -960,7 +985,6 @@ int main(int argc, const char *argv[])
   //do initial choice elimination based on given board
   initialChoiceElm(board, boardSize, n);
 
-  //printBoard(board, boardSize);
 
 
   error = 0;
@@ -992,7 +1016,7 @@ int main(int argc, const char *argv[])
   compute_time += duration_cast<dsec>(Clock::now() - compute_start).count();
   printf("Computation Time: %lf.\n", compute_time);
   
-  correctnessChecker(board, boardSize);
+  correctnessChecker(board, originalBoard, boardSize);
 
   if (board != NULL) {
     /* OUTPUT YOUR RESULTS TO FILES HERE */
