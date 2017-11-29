@@ -1,8 +1,8 @@
 #/usr/bin/env bash
 # generate jobs in batch
 
-threads=(32) # The number of threads 
-inputs=(16x16.txt) # The name of the input files
+threads=(1) # The number of threads 
+inputs=(hard_9x9.txt) # The name of the input files
 rm -f *.job
 
 for f in ${inputs[@]}

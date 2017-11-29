@@ -1026,8 +1026,12 @@ int main(int argc, const char *argv[])
     filename[strlen(filename) - 4] = '\0';
     char output_filename[BUFSIZE];
 
-
     sprintf(output_filename, "file_outputs/output_%s_%d.txt", filename, num_of_threads);
+
+    #ifdef RUN_MIC 
+      sprintf(output_filename, "output_%s_%d.txt", filename, num_of_threads);
+    #endif
+
     FILE *output_file = fopen(output_filename, "w");
     if (!output_file) {
       printf("Error: couldn't output file");
