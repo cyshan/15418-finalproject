@@ -885,6 +885,7 @@ int *bruteForce(int *board, int boardSize, int n) {
           int *newBoard = (int *)calloc(totalSquares, sizeof(int));
           memcpy(newBoard, board, totalSquares * sizeof(int));
           newBoard[i] = (1 << (VALUEBITS + choice)) + choice;
+          //printBoard(newBoard, boardSize);
           eliminateChoices(newBoard, boardSize, i / boardSize, i % boardSize, n);
           if (!humanistic(board, boardSize, n)){
             //no solution exists
@@ -994,6 +995,8 @@ int main(int argc, const char *argv[])
   auto compute_start = Clock::now();
   double compute_time = 0;
 
+  //store whether the sudoku has a solution or not
+  bool solution = true;
 
 #ifdef RUN_MIC /* Use RUN_MIC to distinguish between the target of compilation */
 
@@ -1004,44 +1007,53 @@ int main(int argc, const char *argv[])
   inout(board: length(boardSize * boardSize) INOUT) 
 #endif
   {
-
+    //keep memory location so that memory can be transfered out properly
+    int *temp = board;
     //Humanistic algorithm
     if (!humanistic(board, boardSize, n)){
       //no solution exists
       board = NULL;
     } else board = bruteForce(board, boardSize, n);
 
+    if (board != NULL) {
+      memcpy(temp, board, boardSize * boardSize * sizeof(int));
+    } else solution = false;
   }
+
+  //printBoard(board, boardSize);
 
   compute_time += duration_cast<dsec>(Clock::now() - compute_start).count();
   printf("Computation Time: %lf.\n", compute_time);
+
+  if (!solution) {
+    board = NULL;
+  }
   
   correctnessChecker(board, originalBoard, boardSize);
 
+  /* OUTPUT YOUR RESULTS TO FILES HERE */
+  char input_filename_cpy[BUFSIZE];
+  strcpy(input_filename_cpy, input_filename);
+  char *filename = basename(input_filename_cpy);
+  filename[strlen(filename) - 4] = '\0';
+  char output_filename[BUFSIZE];
+
+  sprintf(output_filename, "file_outputs/output_%s_%d.txt", filename, num_of_threads);
+
+  #ifdef RUN_MIC 
+    sprintf(output_filename, "output_%s_%d.txt", filename, num_of_threads);
+  #endif
+
+  FILE *output_file = fopen(output_filename, "w");
+  if (!output_file) {
+    printf("Error: couldn't output file");
+    return -1;
+  }
+
+  fprintf(output_file, "%d\n", n);
+  
+  // WRITE TO FILE HERE
   if (board != NULL) {
-    /* OUTPUT YOUR RESULTS TO FILES HERE */
-    char input_filename_cpy[BUFSIZE];
-    strcpy(input_filename_cpy, input_filename);
-    char *filename = basename(input_filename_cpy);
-    filename[strlen(filename) - 4] = '\0';
-    char output_filename[BUFSIZE];
-
-    sprintf(output_filename, "file_outputs/output_%s_%d.txt", filename, num_of_threads);
-
-    #ifdef RUN_MIC 
-      sprintf(output_filename, "output_%s_%d.txt", filename, num_of_threads);
-    #endif
-
-    FILE *output_file = fopen(output_filename, "w");
-    if (!output_file) {
-      printf("Error: couldn't output file");
-      return -1;
-    }
-
-    fprintf(output_file, "%d\n", n);
-    
-    // WRITE TO FILE HERE
-
     for (int row = 0; row < boardSize; row++) {
       for (int col = 0; col < boardSize; col++) {
         int i = boardSize * row + col;
@@ -1049,8 +1061,9 @@ int main(int argc, const char *argv[])
       }
       fprintf(output_file, "\n");
     }
-    fclose(output_file);
   }
+
+  fclose(output_file);
 
   return 0;
 }

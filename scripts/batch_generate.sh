@@ -2,7 +2,7 @@
 # generate jobs in batch
 
 threads=(1) # The number of threads 
-inputs=(hard_9x9.txt) # The name of the input files
+inputs=(medium_16x16.txt) # The name of the input files
 rm -f *.job
 
 for f in ${inputs[@]}
