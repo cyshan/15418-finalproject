@@ -12,7 +12,9 @@
 
 #include "mic.h"
 #include <math.h> 
-#include <string> 
+#include <string>
+#include <stack>
+using namespace std;
 
 #define BUFSIZE 1024
 //number of bits (least significant) used to store the real value of the board cell
@@ -20,6 +22,7 @@
 
 static int _argc;
 static const char **_argv;
+typedef stack<int*> BoardStack;
 
 /* Starter code function, don't touch */
 const char *get_option_string(const char *option_name,
@@ -868,15 +871,16 @@ bool humanistic(int *board, int boardSize, int n) {
   return true;
 }
 
-int *bruteForce(int *board, int boardSize, int n) {
+int *stackedBruteForce(int boardSize, int n, BoardStack &bStack) {
+  int *board = bStack.top();
+  bStack.pop();
+
   int totalSquares = boardSize * boardSize;
   for (int i=0; i < totalSquares; i++) {
     int value = board[i];
     if (!(value % (1<<VALUEBITS))) { //cell is empty
       value = value >> VALUEBITS;
       int choice = 0;
-      //printBoard(board, boardSize);
-      //printf("row: %d, col: %d\n", i/boardSize, i%boardSize);
       while (value) {
         value = value>>1;
         choice++;
@@ -887,19 +891,19 @@ int *bruteForce(int *board, int boardSize, int n) {
           newBoard[i] = (1 << (VALUEBITS + choice)) + choice;
           //printBoard(newBoard, boardSize);
           eliminateChoices(newBoard, boardSize, i / boardSize, i % boardSize, n);
-          if (!humanistic(board, boardSize, n)){
+          if (!humanistic(newBoard, boardSize, n)){
             //no solution exists
-            return NULL;
-          } 
-          int *solution = bruteForce(newBoard, boardSize, n);
-          if (solution) return solution; //if a solution exists, return it
-          free(newBoard);
+            free(newBoard);
+            continue;//discard it
+          }
+          bStack.push(newBoard);
         }
       }
+      //free(board);
       return NULL; //there is no solution for the given board
     }
   }
-  return board;
+  return board;//No empty cell is found, board is solved!
 }
 
 void initialChoiceElm(int *board, int boardSize, int n) {
@@ -1013,7 +1017,14 @@ int main(int argc, const char *argv[])
     if (!humanistic(board, boardSize, n)){
       //no solution exists
       board = NULL;
-    } else board = bruteForce(board, boardSize, n);
+    } else {
+      BoardStack bStack;
+      bStack.push(board);
+      while (!bStack.empty()){
+        board = stackedBruteForce(boardSize, n, bStack);
+        if (board) break;
+      }
+    }
 
     if (board != NULL) {
       memcpy(temp, board, boardSize * boardSize * sizeof(int));
