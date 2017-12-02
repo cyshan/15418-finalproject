@@ -441,6 +441,7 @@ void boxElimination(int *board, int boardSize, bool &choicesChanged, int n){
     }
   }
 }
+
 /*
  * bitCount - returns count of number of 1's in word
  *   Examples: bitCount(5) = 2, bitCount(7) = 3
@@ -462,7 +463,7 @@ int bitCount(int x) {
   return (x & every16) + ((x >> 16)& every16);//4
 }
 
-void twinsInRow(int *board, int boardSize, bool &choicesChanged){
+void twinsInRow(int *board, int boardSize, bool &choicesChanged) {
   // We could assume that every empty cell has at least 2 options, therefore no need for filtering (2+)-option cells
   int A;
   int cellA;
@@ -515,7 +516,7 @@ void twinsInRow(int *board, int boardSize, bool &choicesChanged){
   }
 }
 
-void twinsInBox(int *board, int boardSize, bool &choicesChanged){
+void twinsInBox(int *board, int boardSize, bool &choicesChanged) {
   // We could assume that every empty cell has at least 2 options, therefore no need for filtering (2+)-option cells
   int A;
   int cellA;
@@ -573,7 +574,7 @@ void twinsInBox(int *board, int boardSize, bool &choicesChanged){
   }
 }
 
-void twinsInColumn(int *board, int boardSize, bool &choicesChanged){
+void twinsInColumn(int *board, int boardSize, bool &choicesChanged) {
   // We could assume that every empty cell has at least 2 options, therefore no need for filtering (2+)-option cells
   int A;
   int cellA;
@@ -914,6 +915,7 @@ void initialChoiceElm(int *board, int boardSize, int n) {
     }
   }
 }
+
 int main(int argc, const char *argv[])
 {
   using namespace std::chrono;
@@ -1013,8 +1015,11 @@ int main(int argc, const char *argv[])
     if (!humanistic(board, boardSize, n)){
       //no solution exists
       board = NULL;
-    } else board = bruteForce(board, boardSize, n);
-
+    } else { 
+      #pragma omp parallel
+      #pragma omp single
+      board = bruteForce(board, boardSize, n);
+    }
     if (board != NULL) {
       memcpy(temp, board, boardSize * boardSize * sizeof(int));
     } else solution = false;
