@@ -18,6 +18,9 @@
 //number of bits (least significant) used to store the real value of the board cell
 #define VALUEBITS 5
 
+//maximum depth to do brute force before using serial alg
+#define DEPTH_THRESHOLD 2
+
 static int _argc;
 static const char **_argv;
 
@@ -869,7 +872,10 @@ bool humanistic(int *board, int boardSize, int n) {
   return true;
 }
 
-int *bruteForce(int *board, int boardSize, int n) {
+int *bruteForceSeq(int *board, int boardSize, int n) {
+  printf("Starting sequential: \n");
+  if (board == NULL)
+  printf("board null\n");
   int totalSquares = boardSize * boardSize;
   for (int i=0; i < totalSquares; i++) {
     int value = board[i];
@@ -892,9 +898,52 @@ int *bruteForce(int *board, int boardSize, int n) {
             //no solution exists
             return NULL;
           } 
-          int *solution = bruteForce(newBoard, boardSize, n);
+          int *solution = bruteForceSeq(newBoard, boardSize, n);
           if (solution) return solution; //if a solution exists, return it
           free(newBoard);
+        }
+      }
+      return NULL; //there is no solution for the given board
+    }
+  }
+  return board;
+}
+
+int *bruteForce(int *board, int boardSize, int n, int depth) {
+  int totalSquares = boardSize * boardSize;
+  for (int i=0; i < totalSquares; i++) {
+    int value = board[i];
+    if (!(value % (1<<VALUEBITS))) { //cell is empty
+      value = value >> VALUEBITS;
+      int choice = 0;
+      //printBoard(board, boardSize);
+      //printf("row: %d, col: %d\n", i/boardSize, i%boardSize);
+      while (value) {
+        value = value>>1;
+        choice++;
+        if (value % 2) {
+          //printf("choice: %d\n", choice);
+          int *newBoard = (int *)calloc(totalSquares, sizeof(int));
+          memcpy(newBoard, board, totalSquares * sizeof(int));
+          newBoard[i] = (1 << (VALUEBITS + choice)) + choice;
+          //printBoard(newBoard, boardSize);
+          eliminateChoices(newBoard, boardSize, i / boardSize, i % boardSize, n);
+          if (!humanistic(newBoard, boardSize, n)){
+            //no solution exists
+            continue;
+          }
+          int *solution;
+
+          //#pragma omp task {
+            if (depth < DEPTH_THRESHOLD) {
+              solution = bruteForce(newBoard, boardSize, n, depth + 1);
+            } else {
+                solution = bruteForceSeq(newBoard, boardSize, n);
+            }
+            //}
+          //#pragma omp taskwait
+          if (solution) return solution; //if a solution exists, return it
+          //free(newBoard);
         }
       }
       return NULL; //there is no solution for the given board
@@ -988,12 +1037,11 @@ int main(int argc, const char *argv[])
   //do initial choice elimination based on given board
   initialChoiceElm(board, boardSize, n);
 
-
-
   error = 0;
 
   init_time += duration_cast<dsec>(Clock::now() - init_start).count();
   printf("Initialization Time: %lf.\n", init_time);
+
   auto compute_start = Clock::now();
   double compute_time = 0;
 
@@ -1005,20 +1053,24 @@ int main(int argc, const char *argv[])
   /* This pragma means we want the code in the following block be executed in 
    * Xeon Phi.
    */
+
 #pragma offload target(mic)  \
   inout(board: length(boardSize * boardSize) INOUT) 
 #endif
   {
+    printf("offloaded\n");
     //keep memory location so that memory can be transfered out properly
     int *temp = board;
+
     //Humanistic algorithm
     if (!humanistic(board, boardSize, n)){
       //no solution exists
       board = NULL;
     } else { 
-      #pragma omp parallel
+      #pragma omp parallel 
       #pragma omp single
-      board = bruteForce(board, boardSize, n);
+      board = bruteForce(board, boardSize, n, 0);
+      
     }
     if (board != NULL) {
       memcpy(temp, board, boardSize * boardSize * sizeof(int));
