@@ -32,5 +32,5 @@
 *.app
 
 # Output files
-file_outputs/
-job_outputs/
+omp/file_outputs/
+omp/job_outputs/
