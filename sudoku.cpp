@@ -871,9 +871,20 @@ bool humanistic(int *board, int boardSize, int n) {
   return true;
 }
 
-int *stackedBruteForce(int boardSize, int n, BoardStack &bStack) {
-  int *board = bStack.top();
-  bStack.pop();
+int *stackedBruteForce(int boardSize, int n, BoardStack &bStack, omp_lock_t &stackLock) {
+  int *board;
+  omp_set_lock(&stackLock);
+  if (bStack.empty())
+  {
+    board = NULL;
+  }
+  else
+  {
+    board = bStack.top();
+    bStack.pop();
+  }
+  omp_unset_lock(&stackLock);
+  if (!board) return NULL;
 
   int totalSquares = boardSize * boardSize;
   for (int i=0; i < totalSquares; i++) {
@@ -896,7 +907,9 @@ int *stackedBruteForce(int boardSize, int n, BoardStack &bStack) {
             free(newBoard);
             continue;//discard it
           }
+          omp_set_lock(&stackLock);
           bStack.push(newBoard);
+          omp_unset_lock(&stackLock);
         }
       }
       //free(board);
@@ -1020,10 +1033,27 @@ int main(int argc, const char *argv[])
     } else {
       BoardStack bStack;
       bStack.push(board);
-      while (!bStack.empty()){
-        board = stackedBruteForce(boardSize, n, bStack);
-        if (board) break;
+      printf("Here\n");
+      bool sstop = false;
+      int *tboard;
+      int tn;
+      omp_set_num_threads(num_of_threads);
+      omp_lock_t stackLock;
+      omp_init_lock(&stackLock);
+      #pragma omp parallel private(tboard,tn)
+      {
+        tn = omp_get_thread_num();
+        while (!sstop){
+          tboard = stackedBruteForce(boardSize, n, bStack, stackLock);
+          if (tboard) {
+            sstop = true;
+            board = tboard;
+            #pragma omp flush(sstop)
+            #pragma omp flush(board)
+          }
+        }
       }
+      omp_destroy_lock(&stackLock);
     }
 
     if (board != NULL) {
@@ -1050,7 +1080,6 @@ int main(int argc, const char *argv[])
   char output_filename[BUFSIZE];
 
   sprintf(output_filename, "file_outputs/output_%s_%d.txt", filename, num_of_threads);
-
   #ifdef RUN_MIC 
     sprintf(output_filename, "output_%s_%d.txt", filename, num_of_threads);
   #endif
