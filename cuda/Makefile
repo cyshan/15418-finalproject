@@ -1,6 +1,6 @@
-EXECUTABLE := cudaScan
+EXECUTABLE := sudoku
 
-CU_FILES   := scan.cu
+CU_FILES   := sudoku.cu
 
 CU_DEPS    :=
 
@@ -20,7 +20,7 @@ NVCC=nvcc
 NVCCFLAGS=-O3 -m64 --gpu-architecture compute_35
 
 
-OBJS=$(OBJDIR)/main.o  $(OBJDIR)/scan.o
+OBJS=$(OBJDIR)/main.o  $(OBJDIR)/sudoku.o
 
 
 .PHONY: dirs clean
@@ -33,11 +33,7 @@ dirs:
 clean:
 		rm -rf $(OBJDIR) *.ppm *~ $(EXECUTABLE) $(LOGS)
 
-check_scan: default
-				./checker.pl scan
 
-check_find_repeats: default
-				./checker.pl find_repeats
 
 $(EXECUTABLE): dirs $(OBJS)
 		$(CXX) $(CXXFLAGS) -o $@ $(OBJS) $(LDFLAGS)
