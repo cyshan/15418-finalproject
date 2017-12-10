@@ -34,3 +34,6 @@
 # Output files
 omp/file_outputs/
 omp/job_outputs/
+
+# Object files
+cuda/objs
