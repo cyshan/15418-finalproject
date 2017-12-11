@@ -8,6 +8,17 @@
 
 #define VALUEBITS 5
 
+void printBoard(int *board, int boardSize) {
+	for (int i = 0; i < boardSize; i++)
+	{
+		for (int j = 0; j < boardSize; j++) 
+		{
+			printf("%d ", board[i * boardSize + j] % (1<<VALUEBITS));
+		}
+		printf("\n");
+	}
+}
+
 bool isEmpty(int cell){
   // returns true if value is not set yet, false otherwise
   int allOnes = (1 << (VALUEBITS+1)) -1;
@@ -681,7 +692,6 @@ int *bruteForce(int *board, int boardSize, int n) {
     if (!(value % (1<<VALUEBITS))) { //cell is empty
       value = value >> VALUEBITS;
       int choice = 0;
-      //printBoard(board, boardSize);
       //printf("row: %d, col: %d\n", i/boardSize, i%boardSize);
       while (value) {
         value = value>>1;
@@ -708,7 +718,7 @@ int *bruteForce(int *board, int boardSize, int n) {
   return board;
 }
 
-double cudaSudoku(int *board, int boardSize, int n) {
+double cudaSudoku(int *&board, int boardSize, int n) {
 	//do initial choice elimination based on given board
 	initialChoiceElm(board, boardSize, n);
 

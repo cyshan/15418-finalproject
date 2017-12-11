@@ -16,9 +16,10 @@ static char **_argv;
 
 
 
-double cudaSudoku(int *board, int boardSize, int n); 
+double cudaSudoku(int *&board, int boardSize, int n); 
 void printCudaInfo();
 bool isEmpty(int cell);
+void printBoard(int *board, int boardSize);
 
 void writeFile(FILE *output_file, int *board, int i) {
   fprintf(output_file, "%02d ", board[i] % (1<<VALUEBITS));
