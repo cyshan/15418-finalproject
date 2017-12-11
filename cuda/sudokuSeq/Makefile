@@ -31,7 +31,7 @@ dirs:
 		mkdir -p $(OBJDIR)/
 
 clean:
-		rm -rf $(OBJDIR) *.ppm *~ $(EXECUTABLE) $(LOGS)
+		rm -rf $(OBJDIR) *.ppm *~ $(EXECUTABLE) $(LOGS) outputs/*
 
 
 
