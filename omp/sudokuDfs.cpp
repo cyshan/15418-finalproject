@@ -873,9 +873,6 @@ bool humanistic(int *board, int boardSize, int n) {
 }
 
 int *bruteForceSeq(int *board, int boardSize, int n) {
-  printf("Starting sequential: \n");
-  if (board == NULL)
-  printf("board null\n");
   int totalSquares = boardSize * boardSize;
   for (int i=0; i < totalSquares; i++) {
     int value = board[i];
@@ -1058,7 +1055,6 @@ int main(int argc, const char *argv[])
   inout(board: length(boardSize * boardSize) INOUT) 
 #endif
   {
-    printf("offloaded\n");
     //keep memory location so that memory can be transfered out properly
     int *temp = board;
 
